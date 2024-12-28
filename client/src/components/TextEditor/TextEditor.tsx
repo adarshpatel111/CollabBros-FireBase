@@ -1,39 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { Controlled as CodeMirror } from "react-codemirror2"; // Import the wrapper for CodeMirror
+import { useParams, useNavigate } from "react-router-dom";
+import { ref, get, set } from "firebase/database";
+import { db } from "../FireBase/FireBaseConfig";
+import { Controlled as CodeMirror } from "react-codemirror2";
+import "codemirror/lib/codemirror.css";
+import "codemirror/theme/dracula.css";
+import "codemirror/mode/javascript/javascript";
+import "codemirror/mode/xml/xml";
+import "codemirror/mode/css/css";
+import "codemirror/mode/python/python"; // Python mode
+import "codemirror/mode/htmlmixed/htmlmixed"; // HTML mixed mode
+
+// For optional features like matching brackets and linting
+import "codemirror/addon/edit/matchbrackets";
+import "codemirror/addon/edit/closebrackets";
+import "codemirror/addon/selection/active-line";
+import "codemirror/addon/lint/lint";
+import "codemirror/addon/display/placeholder";
 import {
+  Stack,
+  TextField,
+  MenuItem,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Button,
-  TextField,
-  MenuItem,
-  Stack,
-} from "@mui/material"; // Material UI components
-import {
-  doc,
-  setDoc,
-  onSnapshot,
-  getDoc,
-  collection,
-  addDoc,
-} from "firebase/firestore"; // Firebase functions for Firestore
-import { db } from "../FireBase/FireBaseConfig"; // Import Firestore instance
-import "codemirror/lib/codemirror.css"; // Import CodeMirror's base styles
-import "codemirror/theme/dracula.css"; // Dracula theme
-import "codemirror/mode/javascript/javascript"; // JavaScript syntax highlighting
-import "codemirror/mode/xml/xml"; // XML syntax highlighting
-import "codemirror/mode/css/css"; // CSS syntax highlighting
-import "codemirror/addon/edit/closebrackets"; // Close brackets
-import "codemirror/addon/edit/closetag"; // Close tags
-import "codemirror/addon/comment/comment"; // Commenting functionality
-import "codemirror/addon/display/fullscreen"; // Fullscreen mode
-import "codemirror/addon/selection/active-line"; // Active line highlighting
-import "codemirror/addon/display/placeholder"; // Placeholder text
-import "./TextEditor.css"; // Custom styles
-import GenerateButton from "../GenrateButton/GenrateButton"; // Custom component for Generate button
+} from "@mui/material";
+import GenerateButton from "../GenrateButton/GenrateButton";
+import { toast } from "react-hot-toast";
+import GenrateButton from "../GenrateButton/GenrateButton";
 
-// Define available themes and languages
 const themes = [
   { value: "dracula", label: "Dracula" },
   { value: "material", label: "Material" },
@@ -49,177 +46,185 @@ const languages = [
 ];
 
 const TextEditor: React.FC = () => {
-  const [code, setCode] = useState<string>(""); // State for the code content
-  const [language, setLanguage] = useState<string>("javascript"); // Language mode
-  const [theme, setTheme] = useState<string>("dracula"); // Theme of the editor
-  const [readOnly, setReadOnly] = useState<boolean>(false); // Editor's read-only state
-  const [onlineStatus, setOnlineStatus] = useState<boolean>(true); // Simulated online status
-  const [openDialog, setOpenDialog] = useState<boolean>(false); // Dialog visibility state
-  const [generatedLink, setGeneratedLink] = useState<string>(""); // Generated link for sharing
-  const [roomCode, setRoomCode] = useState<string>(""); // Store the generated room code
-  const [roomRef, setRoomRef] = useState<any>(null); // Reference to the room's Firestore document
+  const navigate = useNavigate();
+  const { roomId } = useParams<{ roomId: string }>();
+  const [code, setCode] = useState<string>("");
+  const [language, setLanguage] = useState<string>("javascript");
+  const [theme, setTheme] = useState<string>("dracula");
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [roomLink, setRoomLink] = useState<string>("");
+  const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
 
-  // Sync code to Firebase Firestore in real-time
   useEffect(() => {
-    if (roomCode) {
-      const docRef = doc(db, "rooms", roomCode); // Firestore document reference for the room
-
-      // Listen to changes in Firestore (real-time sync)
-      const unsubscribe = onSnapshot(docRef, (docSnapshot) => {
-        const data = docSnapshot.data();
-        if (data && data.data) {
-          setCode(data.data); // Sync Firestore data with the editor
-        }
-      });
-
-      // Cleanup on component unmount
-      return () => unsubscribe();
+    if (roomId) {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      get(roomRef)
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            setIsRoomFound(true);
+            const roomDataRef = ref(db, `rooms/${roomId}/data`);
+            get(roomDataRef).then((dataSnapshot) => {
+              if (dataSnapshot.exists()) {
+                setCode(dataSnapshot.val());
+              } else {
+                setCode("");
+              }
+            });
+          } else {
+            setIsRoomFound(false);
+            toast.error("Room not found!");
+            setCode("");
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching room data:", error);
+          setIsRoomFound(false);
+        });
     }
-  }, [roomCode]);
+  }, [roomId]);
 
-  // Handle code changes and update Firestore document
   const handleCodeChange = (value: string) => {
-    setCode(value); // Update local state
-
-    // Update Firebase Firestore with the new code content
-    if (roomCode && roomRef) {
-      setDoc(roomRef, { data: value }, { merge: true }); // Merge new data with the existing document
+    setCode(value);
+    if (roomId) {
+      const roomRef = ref(db, `rooms/${roomId}/data`);
+      set(roomRef, value);
     }
   };
 
-  // Handle generate room button click
-  const handleGenerateLink = async () => {
-    const randomRoomCode = `r${Math.random().toString(36).substr(2, 9)}`; // Generate a random room code
-    setRoomCode(randomRoomCode);
+  const generateRoomCode = (): string => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let roomCode = "";
+    for (let i = 0; i < 5; i++) {
+      roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return roomCode;
+  };
 
-    // Create the room document in Firestore
-    const roomDocRef = await addDoc(collection(db, "rooms"), {
-      room: randomRoomCode,
-      data: "", // Initially blank content
-    });
+  const handleGenerateRoom = () => {
+    const roomCode = generateRoomCode();
+    const roomData = { data: "" };
 
-    // Set the room reference for real-time syncing
-    setRoomRef(doc(db, "rooms", roomDocRef.id));
+    set(ref(db, `rooms/${roomCode}`), roomData)
+      .then(() => {
+        const generatedLink = `${
+          import.meta.env.VITE_APP_FRONTEND_URL
+        }/room/${roomCode}`;
+        setRoomLink(generatedLink);
+        setOpenDialog(true);
+      })
+      .catch((error) => {
+        console.error("Error creating room:", error);
+      });
+  };
 
-    // Generate and show the room link
-    const newLink = `${
-      import.meta.env.VITE_APP_FRONTEND_URL
-    }/room/${randomRoomCode}`;
-    setGeneratedLink(newLink); // Set the generated link state
-    setOpenDialog(true); // Open the dialog with the generated link
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
   };
 
   return (
     <>
-      <Stack
-        sx={{
-          flexDirection: { xs: "column", md: "row" },
-          gap: 2,
-          marginTop: { xs: "0rem", md: "1rem" },
-          justifyContent: "space-between",
-        }}
-      >
-        <Stack sx={{ flexDirection: "row", gap: 2 }}>
-          <TextField
-            id="outlined-select-theme"
-            select
-            label="Theme"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            helperText="Please select your theme"
-          >
-            {themes.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
+      {roomId && <h2>Room Code: {roomId}</h2>}
 
-          <TextField
-            id="outlined-select-language"
-            select
-            label="Language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            helperText="Please select your language"
-          >
-            {languages.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          {/* Online/Offline Indicator */}
+      {/* Conditional Rendering for Room Not Found */}
+      {!isRoomFound ? (
+        <Stack sx={{ textAlign: "center", marginBottom: "20px", gap: "10px" }}>
+          <h2>Room Not Found</h2>
+        </Stack>
+      ) : (
+        <>
           <Stack
             sx={{
-              flexDirection: "row",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
+              flexDirection: { xs: "column", md: "row" },
+              gap: 2,
+              marginTop: { xs: "1rem", md: "1rem" },
+              marginBottom: { xs: "1rem", md: "1rem" },
+              justifyContent: "space-between",
             }}
           >
-            <Stack
-              sx={{
-                position: "relative",
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: onlineStatus ? "green" : "red",
-              }}
-            />
-            <span style={{ color: onlineStatus ? "green" : "red" }}>
-              {onlineStatus ? "Online" : "Offline"}
-            </span>
+            <Stack sx={{ flexDirection: "row", gap: 2 }}>
+              <TextField
+                id="outlined-select-currency"
+                select
+                label="Theme"
+                defaultValue="dracula"
+                helperText="Please select your theme"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+              >
+                {themes.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                id="outlined-select-currency"
+                select
+                label="Language"
+                defaultValue="javascript"
+                helperText="Please select your language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                {languages.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+            <Stack sx={{ flexDirection: "row", gap: 2, alignItems: "center", justifyContent: { xs: "center", md: "flex-end" } }}>
+              <Dialog open={openDialog} onClose={handleCloseDialog}>
+                <DialogTitle>Generated Link</DialogTitle>
+                <DialogContent>
+                  <p>Click the link below to join the room:</p>
+                  <a href={roomLink} target="_blank" rel="noopener noreferrer">
+                    {roomLink}
+                  </a>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCloseDialog} color="primary">
+                    Close
+                  </Button>
+                </DialogActions>
+              </Dialog>
+              <Stack sx={{ width: { xs: "60%", md: "auto" } }}>
+                <GenrateButton
+                  onClick={handleGenerateRoom}
+                  btnName={"Generate Room"}
+                />
+              </Stack>
+            </Stack>
           </Stack>
-        </Stack>
 
-        {/* Dialog to show generated link */}
-        <Stack>
-          <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-            <DialogTitle>Generated Link</DialogTitle>
-            <DialogContent>
-              <p>Click the link below to join the room:</p>
-              <a href={generatedLink} target="_blank" rel="noopener noreferrer">
-                {generatedLink}
-              </a>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenDialog(false)} color="primary">
-                Close
-              </Button>
-            </DialogActions>
-          </Dialog>
-          <GenerateButton
-            onClick={handleGenerateLink}
-            btnName={"Generate Room"}
+          <CodeMirror
+            value={code}
+            options={{
+              mode: language,
+              theme: theme,
+              lineNumbers: true,
+              lineWrapping: true,
+              autoCloseBrackets: true,
+              autoCloseTags: true,
+              styleActiveLine: true,
+              tabSize: 2,
+              indentWithTabs: true,
+              lint: true,
+              matchBrackets: true,
+              matchTags: true,
+              autoMatchParens: true,
+              extraKeys: {
+                "Ctrl-/": "toggleComment",
+              },
+              placeholder: "Write your code here...",
+            }}
+            onBeforeChange={(editor, data, value) => {
+              handleCodeChange(value);
+            }}
           />
-        </Stack>
-      </Stack>
-
-      <CodeMirror
-        value={code}
-        options={{
-          mode: language,
-          theme: theme,
-          lineNumbers: true,
-          lineWrapping: true,
-          autoCloseBrackets: true,
-          autoCloseTags: true,
-          styleActiveLine: true,
-          tabSize: 2,
-          indentWithTabs: true,
-          lint: true,
-          matchBrackets: true,
-          matchTags: true,
-          autoMatchParens: true,
-          extraKeys: {
-            "Ctrl-/": "toggleComment", // Toggle comment on Ctrl+/
-          },
-          placeholder: "Write your code here...",
-        }}
-        onBeforeChange={(editor, data, value) => handleCodeChange(value)} // Sync local changes to Firebase
-      />
+        </>
+      )}
     </>
   );
 };
