@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   Stack,
   Typography,
@@ -8,9 +9,8 @@ import {
   DialogTitle,
   Slide,
   Grid,
+  IconButton,
 } from "@mui/material";
-import { Link } from "react-router-dom";
-import React, { useState } from "react";
 import {
   ArrowForward,
   Undo,
@@ -25,8 +25,13 @@ import {
   FileCopy,
   SelectAll,
 } from "@mui/icons-material";
-import ShortcutIcon from "@mui/icons-material/Shortcut";
-import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
+import { Link } from "react-router-dom";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import BedtimeIcon from "@mui/icons-material/Bedtime";
+import ShortcutIcon from "@mui/icons-material/KeyboardAlt";
+import QuestionMarkIcon from "@mui/icons-material/HelpOutline";
 import GroupWorkIcon from "@mui/icons-material/GroupWork";
 import HistoryIcon from "@mui/icons-material/History";
 import CodeIcon from "@mui/icons-material/Code";
@@ -42,186 +47,288 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import HelpButton from "../HelpButton/HelpButton";
+// import HelpButton from "../HelpButton/HelpButton";
 
-// Transition for the Dialog
-const Transition = React.forwardRef(function Transition(props: any, ref: any) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
-
-const Navbar: React.FC = () => {
+const Navbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [openShortcuts, setOpenShortcuts] = useState(false);
   const [openHelp, setOpenHelp] = useState(false);
 
-  // Toggle the modal state
-  const handleOpenShortcuts = () => {
-    setOpenShortcuts(true);
-  };
-  const handleOpenHelp = () => {
-    setOpenHelp(true);
-  };
-
-  const handleClose = () => {
+  const toggleMenu = () => setMenuOpen(!menuOpen);
+  const handleOpenShortcuts = () => setOpenShortcuts(true);
+  const handleOpenHelp = () => setOpenHelp(true);
+  const handleClose = (e) => {
+    e.stopPropagation();
     setOpenShortcuts(false);
     setOpenHelp(false);
   };
 
+  const navLinks = [
+    { title: "Home", path: "/" },
+    { title: "About", path: "/about" },
+    { title: "Services", path: "/services" },
+    { title: "Contact", path: "/contact" },
+  ];
+  // Transition for the Dialog
+  const Transition = React.forwardRef(function Transition(
+    props: any,
+    ref: any
+  ) {
+    return <Slide direction="up" ref={ref} {...props} />;
+  });
   return (
-    <>
+    <Stack
+      component="nav"
+      sx={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        boxSizing: "border-box",
+        padding: "1rem 2rem",
+        width: "100%",
+        alignItems: "center",
+        top: 0,
+        position: "sticky",
+        zIndex: 1000,
+        backgroundColor: "white",
+        borderBottom: "1px solid #e0e0e0",
+        transition: "background-color 0.3s ease-in-out",
+        "&:hover": {
+          backgroundColor: "#f4f4f4",
+          color: "#fff",
+        },
+      }}
+    >
       <Stack
-        component={"nav"}
         sx={{
+          width: "90%",
           flexDirection: "row",
           justifyContent: "space-between",
-          boxSizing: "border-box",
-          padding: "1rem 2rem",
-          width: "100%",
-          alignItems: "center",
-          top: 0,
-          position: "sticky",
-          zIndex: 1000,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
-          transition: "background-color 0.3s ease-in-out",
-          "&:hover": {
-            backgroundColor: "#f4f4f4",
-          },
         }}
       >
         <Typography variant="h6">CollabBros</Typography>
-        <Stack
-          sx={{
-            flexDirection: "row",
-            gap: 2,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {navLinks.map((link) => (
-            <Typography
-              component={Link}
-              to={link.path}
-              key={link.title + link.path}
-              sx={{
-                color: "inherit",
-                textDecoration: "none",
-                fontFamily: "Arial, sans-serif",
-                fontWeight: "bold",
-                fontSize: "1.2rem",
-                transition: "color 0.3s",
-                "&:hover": {
-                  color: "#1976d2",
-                },
-              }}
-            >
-              {link.title}
-            </Typography>
-          ))}
-          {/* Button to open the shortcuts dialog */}
-          <HelpButton
-            btnName="Shortcuts"
-            onClick={handleOpenShortcuts}
-            icons={<ShortcutIcon className="icon" sx={{ fontSize: 20 }} />}
-          />
-          <HelpButton
-            btnName="Help"
-            onClick={handleOpenHelp}
-            icons={<QuestionMarkIcon className="icon" sx={{ fontSize: 20 }} />}
-          />
-        </Stack>
-      </Stack>
-      {/* Modal Dialog for CodeMirror Shortcuts with Animation */}
-      <Dialog
-        open={openShortcuts}
-        onClose={handleClose}
-        TransitionComponent={Transition}
-        keepMounted
-        sx={{
-          "& .MuiDialog-paper": {
-            animation: "fadeIn 0.5s ease-out",
-          },
-        }}
-      >
-        <DialogTitle>CodeMirror Keyboard Shortcuts</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ marginBottom: "1rem" }}>
-            Here are the available CodeMirror shortcuts:
-          </Typography>
 
-          {/* Grid to display each shortcut with icons */}
-          <Grid container spacing={2}>
-            {shortcuts.map((shortcut, index) => (
-              <Grid item xs={12} sm={6} key={index}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <shortcut.icon
-                    sx={{ fontSize: 24, color: shortcut.iconColor }}
-                  />
-                  <Typography variant="body2" sx={{ fontWeight: "500" }}>
-                    <strong>{shortcut.key}</strong>: {shortcut.description}
-                  </Typography>
-                </Stack>
-              </Grid>
-            ))}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Modal Dialog for Help with Instructions */}
-      <Dialog
-        open={openHelp}
-        onClose={handleClose}
-        TransitionComponent={Transition}
-        keepMounted
-        sx={{
-          "& .MuiDialog-paper": {
-            animation: "fadeIn 0.5s ease-out",
-          },
-        }}
-      >
-        <DialogTitle>Know about how to use CollabBros</DialogTitle>
-        <DialogContent>
-          {/* Map through helpTopics */}
+        <Stack>
+          {/* Desktop Navigation */}
           <Stack
-            spacing={2}
             sx={{
-              flexDirection: "column",
+              flexDirection: "row",
+              gap: 2,
+              display: { xs: "none", sm: "flex" },
               justifyContent: "center",
               alignItems: "center",
             }}
           >
-            {helpTopics.map((topic, index) => (
-              <Stack key={index} sx={{ width: "100%", flexDirection: "row" }}>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    marginBottom: "1rem",
-                    display: "flex",
-                    alignItems: "top",
-                  }}
-                >
-                  <topic.icon
-                    sx={{ color: topic.iconColor, marginRight: "8px" }}
-                  />
-                  <Stack>
-                    <strong>{topic.title}:</strong> {topic.description}
-                  </Stack>
-                </Typography>
-              </Stack>
+            {navLinks.map((link) => (
+              <Typography
+                component={Link}
+                to={link.path}
+                key={link.title + link.path}
+                sx={{
+                  color: "inherit",
+                  textDecoration: "none",
+                  fontFamily: "Arial, sans-serif",
+                  fontWeight: "bold",
+                  fontSize: "1.2rem",
+                  transition: "color 0.3s",
+                  "&:hover": {
+                    color: "#1976d2",
+                  },
+                }}
+              >
+                {link.title}
+              </Typography>
             ))}
+
+            {/* <Stack sx={{ flexDirection: "row", gap: 2 }}> */}
+            {/* Help and Shortcuts buttons */}
+            <HelpButton
+              icons={<ShortcutIcon className="icon" sx={{ fontSize: 20 }} />}
+              btnName="Shortcuts"
+              onClick={handleOpenShortcuts}
+            />
+            <HelpButton
+              icons={
+                <QuestionMarkIcon className="icon" sx={{ fontSize: 20 }} />
+              }
+              btnName="Help"
+              onClick={handleOpenHelp}
+            />
+            {/* </Stack> */}
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+
+          {/* Menu toggle button for mobile */}
+          <IconButton
+            sx={{
+              display: { xs: "block", md: "none" },
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={toggleMenu}
+            color="inherit"
+          >
+            {menuOpen ? <CloseIcon /> : <MenuIcon />}
+          </IconButton>
+
+          {/* Mobile Menu */}
+          {menuOpen && (
+            <Stack
+              sx={{
+                flexDirection: "column",
+                gap: "1rem",
+                position: "absolute",
+                top: "4rem",
+                left: 0,
+                margin: "0 auto",
+                width: "100%",
+                background: "white",
+                borderRadius: "10px",
+                paddingTop: "1rem",
+                color: "white",
+                zIndex: 10,
+              }}
+            >
+              {/* Navigation links */}
+              {navLinks.map((link) => (
+                <Typography
+                  component={Link}
+                  to={link.path}
+                  key={link.title + link.path}
+                  sx={{
+                    textTransform: "capitalize",
+                    fontWeight: "bold",
+                    color: "#000",
+                    fontSize: "1.5rem",
+                    textDecoration: "none",
+                    marginLeft: "1rem",
+                    cursor: "pointer",
+                    "&:hover": {
+                      color: "#1976d2",
+                    },
+                  }}
+                  onClick={() => setMenuOpen(false)} // Close menu after link click
+                >
+                  {link.title}
+                </Typography>
+              ))}
+
+              {/* Help and Shortcuts buttons below the links */}
+              <Stack
+                sx={{textAlign:"left"}}
+              >
+                <HelpButton
+                  btnName="Shortcuts"
+                  onClick={handleOpenShortcuts}
+                  icons={
+                    <ShortcutIcon className="icon" sx={{ fontSize: 20 }} />
+                  }
+                />
+                <HelpButton
+                  btnName="Help"
+                  onClick={handleOpenHelp}
+                  icons={
+                    <QuestionMarkIcon className="icon" sx={{ fontSize: 20 }} />
+                  }
+                />
+              </Stack>
+            </Stack>
+          )}
+        </Stack>
+
+        {/* Modal Dialog for CodeMirror Shortcuts with Animation */}
+        <Dialog
+          open={openShortcuts}
+          onClose={handleClose}
+          TransitionComponent={Transition}
+          keepMounted
+          sx={{
+            "& .MuiDialog-paper": {
+              animation: "fadeIn 0.5s ease-out",
+            },
+          }}
+        >
+          <DialogTitle>CodeMirror Keyboard Shortcuts</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" sx={{ marginBottom: "1rem" }}>
+              Here are the available CodeMirror shortcuts:
+            </Typography>
+
+            {/* Grid to display each shortcut with icons */}
+            <Grid container spacing={2}>
+              {shortcuts.map((shortcut, index) => (
+                <Grid item xs={12} sm={6} key={index}>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <shortcut.icon
+                      sx={{ fontSize: 24, color: shortcut.iconColor }}
+                    />
+                    <Typography variant="body2" sx={{ fontWeight: "500" }}>
+                      <strong>{shortcut.key}</strong>: {shortcut.description}
+                    </Typography>
+                  </Stack>
+                </Grid>
+              ))}
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+        {/* Modal Dialog for Help with Instructions */}
+        <Dialog
+          open={openHelp}
+          onClose={handleClose}
+          TransitionComponent={Transition}
+          keepMounted
+          sx={{
+            "& .MuiDialog-paper": {
+              animation: "fadeIn 0.5s ease-out",
+            },
+          }}
+        >
+          <DialogTitle>Know about how to use CollabBros</DialogTitle>
+          <DialogContent>
+            {/* Map through helpTopics */}
+            <Stack
+              spacing={2}
+              sx={{
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {helpTopics.map((topic, index) => (
+                <Stack key={index} sx={{ width: "100%", flexDirection: "row" }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      marginBottom: "1rem",
+                      display: "flex",
+                      alignItems: "top",
+                    }}
+                  >
+                    <topic.icon
+                      sx={{ color: topic.iconColor, marginRight: "8px" }}
+                    />
+                    <Stack>
+                      <strong>{topic.title}:</strong> {topic.description}
+                    </Stack>
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Stack>
+    </Stack>
   );
 };
+
 
 export default Navbar;
 
