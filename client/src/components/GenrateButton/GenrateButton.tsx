@@ -24,7 +24,7 @@ const GenerateButton = ({ onClick, btnName }) => {
   const stars = [1, 2, 3, 4, 5, 6]; // Array for the number of stars to be rendered
 
   return (
-    <button onClick={onClick} className={styles.button}>
+    <button onClick={onClick}  className={styles.button}>
       {btnName}
       {stars.map((star, index) => (
         <Stack key={index} className={`${styles.star} ${styles[`star-${star}`]}`}>
