@@ -54,7 +54,7 @@ const TextEditor: React.FC = () => {
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
-
+const VITE_APP_FRONTEND_URL=import.meta.env.VITE_APP_FRONTEND_URL
   useEffect(() => {
     if (roomId) {
       const roomRef = ref(db, `rooms/${roomId}`);
@@ -106,9 +106,7 @@ const TextEditor: React.FC = () => {
 
     set(ref(db, `rooms/${roomCode}`), roomData)
       .then(() => {
-        const generatedLink = `${
-          import.meta.env.VITE_APP_FRONTEND_URL
-        }/room/${roomCode}`;
+        const generatedLink = `${VITE_APP_FRONTEND_URL}/room/${roomCode}`;
         setRoomLink(generatedLink);
         setOpenDialog(true);
       })
