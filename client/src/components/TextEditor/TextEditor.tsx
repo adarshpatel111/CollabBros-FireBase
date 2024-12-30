@@ -29,7 +29,6 @@ import {
 } from "@mui/material";
 import GenerateButton from "../GenrateButton/GenrateButton";
 import { toast } from "react-hot-toast";
-import GenrateButton from "../GenrateButton/GenrateButton";
 
 const themes = [
   { value: "dracula", label: "Dracula" },
@@ -54,7 +53,7 @@ const TextEditor: React.FC = () => {
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
-const VITE_APP_FRONTEND_URL=import.meta.env.VITE_APP_FRONTEND_URL
+  const VITE_APP_FRONTEND_URL = import.meta.env.VITE_APP_FRONTEND_URL;
   useEffect(() => {
     if (roomId) {
       const roomRef = ref(db, `rooms/${roomId}`);
@@ -172,15 +171,25 @@ const VITE_APP_FRONTEND_URL=import.meta.env.VITE_APP_FRONTEND_URL
                 ))}
               </TextField>
             </Stack>
-            <Stack sx={{ flexDirection: "row", gap: 2, alignItems: "center", justifyContent: { xs: "center", md: "flex-end" } }}>
+            <Stack
+              sx={{
+                flexDirection: "row",
+                gap: 2,
+                alignItems: "center",
+                justifyContent: { xs: "center", md: "flex-end" },
+              }}
+            >
               <Dialog open={openDialog} onClose={handleCloseDialog}>
                 <DialogTitle>Generated Link</DialogTitle>
                 <DialogContent>
-                  <p>Click the link below to join the room:</p>
+                  <div>
+                    <span>Click the link below to join the room:</span>
+                  </div>
                   <a href={roomLink} target="_blank" rel="noopener noreferrer">
                     {roomLink}
                   </a>
                 </DialogContent>
+
                 <DialogActions>
                   <Button onClick={handleCloseDialog} color="primary">
                     Close
@@ -188,7 +197,7 @@ const VITE_APP_FRONTEND_URL=import.meta.env.VITE_APP_FRONTEND_URL
                 </DialogActions>
               </Dialog>
               <Stack sx={{ width: { xs: "60%", md: "auto" } }}>
-                <GenrateButton
+                <GenerateButton
                   onClick={handleGenerateRoom}
                   btnName={"Generate Room"}
                 />
