@@ -97,6 +97,32 @@ const TextEditor: React.FC = () => {
     setActiveTab(newValue);
   };
 
+  const generateRoomCode = (): string => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let roomCode = "";
+    for (let i = 0; i < 5; i++) {
+      roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return roomCode;
+  };
+  const handleGenerateRoom = () => {
+    const roomCode = generateRoomCode();
+    const roomData = { data: "" };
+
+    set(ref(db, `rooms/${roomCode}`), roomData)
+      .then(() => {
+        const generatedLink = `${VITE_APP_FRONTEND_URL}/room/${roomCode}`;
+        setRoomLink(generatedLink);
+        setOpenDialog(true);
+      })
+      .catch((error) => {
+        console.error("Error creating room:", error);
+      });
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
   return (
     <>
       {roomId && <h2>Room Code: {roomId}</h2>}
@@ -158,7 +184,7 @@ const TextEditor: React.FC = () => {
                 justifyContent: { xs: "center", md: "flex-end" },
               }}
             >
-              <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+              <Dialog open={openDialog} onClose={handleCloseDialog}>
                 <DialogTitle>Generated Link</DialogTitle>
                 <DialogContent>
                   <div>
@@ -169,14 +195,17 @@ const TextEditor: React.FC = () => {
                   </a>
                 </DialogContent>
                 <DialogActions>
-                  <Button onClick={() => setOpenDialog(false)} color="primary">
+                  <Button onClick={handleCloseDialog} color="primary">
                     Close
                   </Button>
                 </DialogActions>
               </Dialog>
 
               {/* Generate Room Button */}
-              <GenerateButton onClick={() => {}} btnName={"Generate Room"} />
+              <GenerateButton
+                onClick={handleGenerateRoom}
+                btnName={"Generate Room"}
+              />
             </Stack>
           </Stack>
 
@@ -187,8 +216,9 @@ const TextEditor: React.FC = () => {
               <Tab label="Preview" />
             </Tabs>
           ) : (
-            <Tabs value={0} disabled>
+            <Tabs value={0} aria-disabled="true">
               <Tab label="Code" />
+              {/* <Tab label="Preview" disabled /> */}
             </Tabs>
           )}
 
