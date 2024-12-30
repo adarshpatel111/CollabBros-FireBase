@@ -11,12 +11,6 @@ import "codemirror/mode/css/css";
 import "codemirror/mode/python/python"; // Python mode
 import "codemirror/mode/htmlmixed/htmlmixed"; // HTML mixed mode
 import "./TextEditor.css";
-// For optional features like matching brackets and linting
-import "codemirror/addon/edit/matchbrackets";
-import "codemirror/addon/edit/closebrackets";
-import "codemirror/addon/selection/active-line";
-import "codemirror/addon/lint/lint";
-import "codemirror/addon/display/placeholder";
 import {
   Stack,
   TextField,
@@ -26,9 +20,12 @@ import {
   DialogContent,
   DialogTitle,
   Button,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import GenerateButton from "../GenrateButton/GenrateButton";
 import { toast } from "react-hot-toast";
+import {marked} from "marked"; // Markdown-to-HTML conversion library
 
 const themes = [
   { value: "dracula", label: "Dracula" },
@@ -52,6 +49,9 @@ const TextEditor: React.FC = () => {
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
+  const [isOffline, setIsOffline] = useState<boolean>(false); // State for offline mode
+  const [activeTab, setActiveTab] = useState<number>(0); // 0 for Code, 1 for Preview
+
   const VITE_APP_FRONTEND_URL = import.meta.env.VITE_APP_FRONTEND_URL;
 
   useEffect(() => {
@@ -61,15 +61,12 @@ const TextEditor: React.FC = () => {
         .then((snapshot) => {
           if (snapshot.exists()) {
             setIsRoomFound(true);
-            // Fetch the room data and listen for live updates
             const roomDataRef = ref(db, `rooms/${roomId}/data`);
-
-            // Firebase real-time listener
             onValue(roomDataRef, (snapshot) => {
               if (snapshot.exists()) {
-                setCode(snapshot.val()); // Update code in the editor when Firebase data changes
+                setCode(snapshot.val()); // Update code in the editor
               } else {
-                setCode(""); // If there's no code, set empty code
+                setCode(""); // Empty code if no data
               }
             });
           } else {
@@ -88,38 +85,18 @@ const TextEditor: React.FC = () => {
   const handleCodeChange = (value: string) => {
     setCode(value); // Update the local code state
 
-    if (roomId) {
-      const roomRef = ref(db, `rooms/${roomId}/data`);
-      set(roomRef, value); // Save updated code to Firebase Realtime Database
+    if (navigator.onLine) {
+      if (roomId) {
+        const roomRef = ref(db, `rooms/${roomId}/data`);
+        set(roomRef, value); // Save to Firebase
+      }
+    } else {
+      localStorage.setItem(`code-${roomId}`, value); // Store in localStorage if offline
     }
   };
 
-  const generateRoomCode = (): string => {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let roomCode = "";
-    for (let i = 0; i < 5; i++) {
-      roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return roomCode;
-  };
-
-  const handleGenerateRoom = () => {
-    const roomCode = generateRoomCode();
-    const roomData = { data: "" }; // Empty code for the new room
-
-    set(ref(db, `rooms/${roomCode}`), roomData)
-      .then(() => {
-        const generatedLink = `${VITE_APP_FRONTEND_URL}/room/${roomCode}`;
-        setRoomLink(generatedLink);
-        setOpenDialog(true);
-      })
-      .catch((error) => {
-        console.error("Error creating room:", error);
-      });
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
   };
 
   return (
@@ -147,8 +124,6 @@ const TextEditor: React.FC = () => {
                 id="outlined-select-currency"
                 select
                 label="Theme"
-                defaultValue="dracula"
-                helperText="Please select your theme"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
               >
@@ -160,11 +135,9 @@ const TextEditor: React.FC = () => {
               </TextField>
 
               <TextField
-                id="outlined-select-currency"
+                id="outlined-select-language"
                 select
                 label="Language"
-                defaultValue="javascript"
-                helperText="Please select your language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
               >
@@ -175,6 +148,7 @@ const TextEditor: React.FC = () => {
                 ))}
               </TextField>
             </Stack>
+
             <Stack
               sx={{
                 flexDirection: "row",
@@ -183,7 +157,7 @@ const TextEditor: React.FC = () => {
                 justifyContent: { xs: "center", md: "flex-end" },
               }}
             >
-              <Dialog open={openDialog} onClose={handleCloseDialog}>
+              <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
                 <DialogTitle>Generated Link</DialogTitle>
                 <DialogContent>
                   <div>
@@ -193,47 +167,55 @@ const TextEditor: React.FC = () => {
                     {roomLink}
                   </a>
                 </DialogContent>
-
                 <DialogActions>
-                  <Button onClick={handleCloseDialog} color="primary">
+                  <Button onClick={() => setOpenDialog(false)} color="primary">
                     Close
                   </Button>
                 </DialogActions>
               </Dialog>
-              <Stack sx={{ width: { xs: "60%", md: "auto" } }}>
-                <GenerateButton
-                  onClick={handleGenerateRoom}
-                  btnName={"Generate Room"}
-                />
-              </Stack>
+
+              {/* Generate Room Button */}
+              <GenerateButton onClick={() => {}} btnName={"Generate Room"} />
             </Stack>
           </Stack>
 
-          <CodeMirror
-            value={code}
-            options={{
-              mode: language,
-              theme: theme,
-              lineNumbers: true,
-              lineWrapping: true,
-              autoCloseBrackets: true,
-              autoCloseTags: true,
-              styleActiveLine: true,
-              tabSize: 2,
-              indentWithTabs: true,
-              lint: true,
-              matchBrackets: true,
-              matchTags: true,
-              autoMatchParens: true,
-              extraKeys: {
-                "Ctrl-/": "toggleComment",
-              },
-              placeholder: "Write your code here...",
-            }}
-            onBeforeChange={(editor, data, value) => {
-              handleCodeChange(value); // Update the code in real-time to Firebase
-            }}
-          />
+          {/* Tabs for Code/Preview */}
+          <Tabs value={activeTab} onChange={handleTabChange}>
+            <Tab label="Code" />
+            <Tab label="Preview" />
+          </Tabs>
+
+          {/* Code Editor or Markdown Preview */}
+          {activeTab === 0 ? (
+            // Code Editor
+            <Stack sx={{ marginTop: "20px" }}>
+              <CodeMirror
+                value={code}
+                options={{
+                  mode: language,
+                  theme: theme,
+                  lineNumbers: true,
+                  matchBrackets: true,
+                  autoCloseBrackets: true,
+                  styleActiveLine: true,
+                  lint: true,
+                  placeholder: "Start coding...",
+                }}
+                onBeforeChange={(editor, data, value) => {
+                  handleCodeChange(value); // Handle code change
+                }}
+              />
+            </Stack>
+          ) : (
+            // Markdown Preview
+            <Stack sx={{ marginTop: "20px" }}>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: marked(code), // Render Markdown as HTML
+                }}
+              />
+            </Stack>
+          )}
         </>
       )}
     </>
