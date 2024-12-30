@@ -50,6 +50,7 @@ const TextEditor: React.FC = () => {
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<number>(0); // 0 for Code, 1 for Preview
+  const [isOffline, setIsOffline] = useState<boolean>(false); //for offline Mode 
   const VITE_APP_FRONTEND_URL = import.meta.env.VITE_APP_FRONTEND_URL;
 
   useEffect(() => {
@@ -79,20 +80,51 @@ const TextEditor: React.FC = () => {
         });
     }
   }, [roomId]);
+//// offline mode
 
   const handleCodeChange = (value: string) => {
     setCode(value); // Update the local code state
 
-    if (navigator.onLine) {
+    // Save to localStorage if offline
+    if (isOffline) {
+      localStorage.setItem(`code-${roomId}`, value);
+    } else {
       if (roomId) {
         const roomRef = ref(db, `rooms/${roomId}/data`);
         set(roomRef, value); // Save to Firebase
       }
-    } else {
-      localStorage.setItem(`code-${roomId}`, value); // Store in localStorage if offline
     }
   };
+   useEffect(() => {
+     // Detect offline and online status
+     const handleOffline = () => {
+       setIsOffline(true);
+       toast.error("You are offline. Your changes will be saved locally.");
+     };
+     const handleOnline = () => {
+       setIsOffline(false);
+       toast.success("You are back online! Syncing changes...");
+       syncLocalStorageToFirebase();
+     };
 
+     window.addEventListener("offline", handleOffline);
+     window.addEventListener("online", handleOnline);
+
+     return () => {
+       window.removeEventListener("offline", handleOffline);
+       window.removeEventListener("online", handleOnline);
+     };
+   }, []);
+const syncLocalStorageToFirebase = () => {
+  if (roomId) {
+    const savedCode = localStorage.getItem(`code-${roomId}`);
+    if (savedCode) {
+      const roomRef = ref(db, `rooms/${roomId}/data`);
+      set(roomRef, savedCode); // Sync to Firebase
+      localStorage.removeItem(`code-${roomId}`); // Remove after sync
+    }
+  }
+};
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
