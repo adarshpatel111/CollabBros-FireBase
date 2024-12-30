@@ -10,7 +10,7 @@ import "codemirror/mode/xml/xml";
 import "codemirror/mode/css/css";
 import "codemirror/mode/python/python"; // Python mode
 import "codemirror/mode/htmlmixed/htmlmixed"; // HTML mixed mode
-
+import "./TextEditor.css";
 // For optional features like matching brackets and linting
 import "codemirror/addon/edit/matchbrackets";
 import "codemirror/addon/edit/closebrackets";
