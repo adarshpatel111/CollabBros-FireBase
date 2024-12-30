@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ref, get, set } from "firebase/database";
+import { useParams } from "react-router-dom";
+import { ref, get, set, onValue } from "firebase/database";
 import { db } from "../FireBase/FireBaseConfig";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import "codemirror/lib/codemirror.css";
@@ -45,15 +45,15 @@ const languages = [
 ];
 
 const TextEditor: React.FC = () => {
-  const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
-  const [code, setCode] = useState<string>("");
+  const [code, setCode] = useState<string>(""); // Code state for the editor
   const [language, setLanguage] = useState<string>("javascript");
   const [theme, setTheme] = useState<string>("dracula");
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
   const VITE_APP_FRONTEND_URL = import.meta.env.VITE_APP_FRONTEND_URL;
+
   useEffect(() => {
     if (roomId) {
       const roomRef = ref(db, `rooms/${roomId}`);
@@ -61,12 +61,15 @@ const TextEditor: React.FC = () => {
         .then((snapshot) => {
           if (snapshot.exists()) {
             setIsRoomFound(true);
+            // Fetch the room data and listen for live updates
             const roomDataRef = ref(db, `rooms/${roomId}/data`);
-            get(roomDataRef).then((dataSnapshot) => {
-              if (dataSnapshot.exists()) {
-                setCode(dataSnapshot.val());
+
+            // Firebase real-time listener
+            onValue(roomDataRef, (snapshot) => {
+              if (snapshot.exists()) {
+                setCode(snapshot.val()); // Update code in the editor when Firebase data changes
               } else {
-                setCode("");
+                setCode(""); // If there's no code, set empty code
               }
             });
           } else {
@@ -83,10 +86,11 @@ const TextEditor: React.FC = () => {
   }, [roomId]);
 
   const handleCodeChange = (value: string) => {
-    setCode(value);
+    setCode(value); // Update the local code state
+
     if (roomId) {
       const roomRef = ref(db, `rooms/${roomId}/data`);
-      set(roomRef, value);
+      set(roomRef, value); // Save updated code to Firebase Realtime Database
     }
   };
 
@@ -101,7 +105,7 @@ const TextEditor: React.FC = () => {
 
   const handleGenerateRoom = () => {
     const roomCode = generateRoomCode();
-    const roomData = { data: "" };
+    const roomData = { data: "" }; // Empty code for the new room
 
     set(ref(db, `rooms/${roomCode}`), roomData)
       .then(() => {
@@ -227,7 +231,7 @@ const TextEditor: React.FC = () => {
               placeholder: "Write your code here...",
             }}
             onBeforeChange={(editor, data, value) => {
-              handleCodeChange(value);
+              handleCodeChange(value); // Update the code in real-time to Firebase
             }}
           />
         </>
