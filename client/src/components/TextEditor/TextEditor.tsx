@@ -10,6 +10,7 @@ import "codemirror/mode/xml/xml";
 import "codemirror/mode/css/css";
 import "codemirror/mode/python/python"; // Python mode
 import "codemirror/mode/htmlmixed/htmlmixed"; // HTML mixed mode
+import { marked } from "marked"; // Markdown rendering
 import "./TextEditor.css";
 import {
   Stack,
@@ -25,7 +26,6 @@ import {
 } from "@mui/material";
 import GenerateButton from "../GenrateButton/GenrateButton";
 import { toast } from "react-hot-toast";
-import {marked} from "marked"; // Markdown-to-HTML conversion library
 
 const themes = [
   { value: "dracula", label: "Dracula" },
@@ -49,9 +49,7 @@ const TextEditor: React.FC = () => {
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [roomLink, setRoomLink] = useState<string>("");
   const [isRoomFound, setIsRoomFound] = useState<boolean>(true);
-  const [isOffline, setIsOffline] = useState<boolean>(false); // State for offline mode
   const [activeTab, setActiveTab] = useState<number>(0); // 0 for Code, 1 for Preview
-
   const VITE_APP_FRONTEND_URL = import.meta.env.VITE_APP_FRONTEND_URL;
 
   useEffect(() => {
@@ -139,7 +137,10 @@ const TextEditor: React.FC = () => {
                 select
                 label="Language"
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => {
+                  setLanguage(e.target.value);
+                  setActiveTab(0); // Always switch to "Code" tab when language changes
+                }}
               >
                 {languages.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -179,13 +180,19 @@ const TextEditor: React.FC = () => {
             </Stack>
           </Stack>
 
-          {/* Tabs for Code/Preview */}
-          <Tabs value={activeTab} onChange={handleTabChange}>
-            <Tab label="Code" />
-            <Tab label="Preview" />
-          </Tabs>
+          {/* Conditionally render tabs based on selected language */}
+          {language === "markdown" ? (
+            <Tabs value={activeTab} onChange={handleTabChange}>
+              <Tab label="Code" />
+              <Tab label="Preview" />
+            </Tabs>
+          ) : (
+            <Tabs value={0} disabled>
+              <Tab label="Code" />
+            </Tabs>
+          )}
 
-          {/* Code Editor or Markdown Preview */}
+          {/* Render code editor or markdown preview */}
           {activeTab === 0 ? (
             // Code Editor
             <Stack sx={{ marginTop: "20px" }}>
@@ -206,16 +213,14 @@ const TextEditor: React.FC = () => {
                 }}
               />
             </Stack>
-          ) : (
+          ) : language === "markdown" ? (
             // Markdown Preview
-            <Stack sx={{ marginTop: "20px" }}>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: marked(code), // Render Markdown as HTML
-                }}
-              />
-            </Stack>
-          )}
+            <div
+              dangerouslySetInnerHTML={{
+                __html: marked(code), // Render Markdown as HTML
+              }}
+            />
+          ) : null}
         </>
       )}
     </>
